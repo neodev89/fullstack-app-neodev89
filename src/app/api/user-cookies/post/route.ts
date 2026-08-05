@@ -1,7 +1,7 @@
 export const dynamic = "auto";
 
-import { responseApiObj } from "@/src/responseAPI/responseApi";
 import jwt from "jsonwebtoken";
+import { responseApiObj } from "@/src/responseAPI/responseApi";
 import { cookies } from "next/headers";
 
 
@@ -28,11 +28,13 @@ export async function POST(req: Request) {
             }), { status: 404 }
         )
 
-        const email = await req.json();
-        const strEmail = String(email);
+        const body = await req.json();
+        const parsedBody: { email: string, tk: string } = body;
+        const strEmail = String(parsedBody.email);
+        const strTk = String(parsedBody.tk);
 
         const token = jwt.sign(
-            { email: strEmail },
+            { email: strEmail, token: strTk },
             firmToken,
             {
                 expiresIn: '1d'

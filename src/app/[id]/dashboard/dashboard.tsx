@@ -1,17 +1,22 @@
 "use client"
 
+import Link from "next/link";
 import FormComponent from "@/src/ui/form/form";
 import { formSchema, formType, ResponseAPISchema } from "@/src/zod/formSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useForm, useWatch } from "react-hook-form";
 
 export default function DashboardComponent({
-    user
+    user,
 }: {
-    user: formType | null
+    user: formType | null;
 }) {
     const router = useRouter();
+    const path = usePathname();
+
+    const newPath = path.replace("dashboard", "invoices");
 
     const initialState: formType = {
         name: "Mario",
@@ -26,6 +31,7 @@ export default function DashboardComponent({
         phone: "Example",
         email: "Example",
         pw: "Example",
+        tk: "",
     };
 
     const { control, handleSubmit, setValue, reset } = useForm<formType>({
@@ -92,8 +98,33 @@ export default function DashboardComponent({
         }
     }
 
+    async function handleExit() {
+        try {   
+            const res = await fetch("http://localhost:3000/api/user-cookies/delete", {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                cache: 'no-store' // Evita che Next.js salvi in cache la risposta per utenti diversi
+            });
+            const awaitRes = await res.json();
+            if (!awaitRes) return;
+            router.push("/");
+        } catch (error: Error | unknown) {
+            console.log(error instanceof Error ? error.message : error);
+            return null;
+        }
+    }
+
+    const utente = useWatch({
+        control,
+    });
+    useEffect(() => {
+        console.log("Utente loggato: ", utente);
+    }, [user, utente]);
+
     return (
-        <div className="relative flex flex-1">
+        <div className="relative flex flex-1 flex-col">
             {
                 !user ? (
                     <p>Utente non trovato</p>
@@ -114,6 +145,8 @@ export default function DashboardComponent({
                     </FormComponent>
                 )
             }
+            <button type="button" className="relative flex items-center justify-center border-2 border-red-500 h-10 w-26 rounded-2xl min-w-28 cursor-pointer" onClick={handleExit}>Esci</button>
+            <Link className="relative flex items-center justify-center border-2 border-red-500 h-10 w-26 rounded-2xl min-w-28 cursor-pointer" href={`${newPath}`}>Vai alle fatture</Link>
         </div>
     )
 };

@@ -1,5 +1,7 @@
-import { ResponseApiProps } from "@/src/responseAPI/responseApi";
+'use server'
+
 import DashboardComponent from "./dashboard";
+import { ResponseApiProps } from "@/src/responseAPI/responseApi";
 import { formType, ResponseAPISchema, formSchema } from "@/src/zod/formSchema";
 import { cookies } from "next/headers";
 
@@ -40,19 +42,20 @@ export default async function Dashboard() {
 
             if (!res.ok) return undefined;
             const response = await res.json();
-            const parsed = response as ResponseApiProps<{ email: string, iat: number, exp: number }>;
+            const parsed = response as ResponseApiProps<{ email: string, token: string, iat: number, exp: number }>;
 
-            return parsed.data.email; // <-- FONDAMENTALE: ricordati il return dell'email!
+            return parsed.data; // <-- FONDAMENTALE: ricordati il return dell'email!
         } catch (error) {
             console.log("Errore nella GET: ", error instanceof Error ? error.message : error);
             return undefined;
         }
     }
-    const email = await userEmail();
+    const userData = await userEmail();
+    console.log("I dati del cookie sono presenti? ", userData ? userData : "Nessun dato disponibile");
     let userDashboard;
-    if (email) {
-        console.log("Viene mostrata la email? ", email);
-        userDashboard = await getUser(email);
+    if (userData && userData.email) {
+        console.log("Viene mostrata la email? ", userData.email);
+        userDashboard = await getUser(userData.email);
     }
     console.log("Nessuna email presente")
 
@@ -60,7 +63,7 @@ export default async function Dashboard() {
         <div>
             {
                 !userDashboard ? (
-                    <p>Nessun dato da visualizzare</p>
+                    <DashboardComponent user={null} />
                 ) : (
                     <DashboardComponent user={userDashboard} />
                 )

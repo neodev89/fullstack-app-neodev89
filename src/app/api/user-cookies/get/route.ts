@@ -16,7 +16,7 @@ export async function GET() {
                 message: "la firma non è stata trovata",
                 data: undefined,
                 status: 404,
-            }), { status: 400 }
+            }), { status: 404 }
         );
         if (!firmToken) return Response.json(
             responseApiObj<undefined>({
@@ -24,12 +24,19 @@ export async function GET() {
                 message: "la firma non è stata trovata",
                 data: undefined,
                 status: 404,
-            }), { status: 400 }
+            }), { status: 404 }
         );
 
         const rawToken = cookieStore.get(firmSetCookies)?.value;
         if (!rawToken) {
-            return Response.json({ data: "" });
+            return Response.json(
+                responseApiObj<undefined>({
+                    success: false,
+                    message: "Il token non possiede alcun valore",
+                    data: undefined,
+                    status: 404,
+                }), { status: 404 }
+            );
         }
 
         const decoded = jwt.verify(rawToken, firmToken);
