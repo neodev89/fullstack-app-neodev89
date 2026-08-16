@@ -8,6 +8,7 @@ interface customFetchProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     body?: any;
     cache?: RequestCache | undefined;
+    signal?: AbortSignal;
 }
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;

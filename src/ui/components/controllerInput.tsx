@@ -1,11 +1,5 @@
-import { Control, Controller, FieldValues, Path } from "react-hook-form";
-
-type controlledInputProps<T extends object> = FieldValues & {
-    control: Control<T>;
-    name: Path<T>;
-    type: "text" | "number" | "email" | "password" | "date";
-    values: unknown;
-}
+import { controlledInputProps } from "@/src/types/typeControlField"
+import { Controller } from "react-hook-form"
 
 export const ControlledInput = <T extends object>({
     control, name, type, values

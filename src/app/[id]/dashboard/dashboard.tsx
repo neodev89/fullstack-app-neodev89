@@ -72,7 +72,9 @@ export default function DashboardComponent({
 
     const handleDelete = async (email: formType["email"]) => {
         try {
-            const response = await fetch(`http://127.0.0.1:8000/api/delete-user?email=${encodeURIComponent(email)}`, {
+            const url = new URL("http://127.0.0.1:8000/api/delete-user");
+            url.searchParams.set("email", encodeURIComponent(email));
+            const response = await fetch(url.toString(), {
                 method: "delete",
                 headers: {
                     "Content-Type": "application/json"
@@ -124,10 +126,10 @@ export default function DashboardComponent({
     }, [user, utente]);
 
     return (
-        <div className="relative flex flex-1 flex-col">
+        <div className="relative flex flex-1 flex-col bg-black">
             {
                 !user ? (
-                    <p>Utente non trovato</p>
+                    <p className="text-white">Utente non trovato</p>
                 ) : (
                     <FormComponent
                         user={user}
@@ -145,8 +147,8 @@ export default function DashboardComponent({
                     </FormComponent>
                 )
             }
-            <button type="button" className="relative flex items-center justify-center border-2 border-red-500 h-10 w-26 rounded-2xl min-w-28 cursor-pointer" onClick={handleExit}>Esci</button>
-            <Link className="relative flex items-center justify-center border-2 border-red-500 h-10 w-26 rounded-2xl min-w-28 cursor-pointer" href={`${newPath}`}>Vai alle fatture</Link>
+            <button type="button" className="relative flex items-center justify-center text-white border-2 border-red-500 h-10 w-26 rounded-2xl min-w-28 cursor-pointer" onClick={handleExit}>Esci</button>
+            <Link className="relative flex items-center justify-center text-white border-2 border-red-500 h-10 w-26 rounded-2xl min-w-28 cursor-pointer" href={`${newPath}`}>Vai alle fatture</Link>
         </div>
     )
 };

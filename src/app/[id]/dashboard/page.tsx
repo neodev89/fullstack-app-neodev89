@@ -60,7 +60,7 @@ export default async function Dashboard() {
     console.log("Nessuna email presente")
 
     return (
-        <div>
+        <div className="relative flex flex-1 justify-center items-center bg-black">
             {
                 !userDashboard ? (
                     <DashboardComponent user={null} />

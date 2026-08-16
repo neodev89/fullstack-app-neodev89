@@ -49,7 +49,6 @@ export default function HomeComponent() {
     try {
       console.log("HandleSubmitForm chiamata")
       const path = "http://127.0.0.1:8000/api/save-user";
-      console.log("Quale path API sto chiamando?: ", path);
       const response = await customFetch({
         isPy: true,
         urlPy: `${path}`,
@@ -59,32 +58,42 @@ export default function HomeComponent() {
         },
         body: JSON.stringify(data),
       });
-      const res = await response.json();
-      const parsed = await ResponseAPISchema.parseAsync(res);
+      const parsed = await ResponseAPISchema.parseAsync(response);
       if (!parsed) {
         console.log("La forma della response non è adatta allo schema Zod");
         return parsed;
       }
       console.log("Ecco la response: ", parsed);
+      console.log("I dati di parsed sono: ", parsed.data.data_user);
 
-      if (parsed.status === 200 && parsed.data.data_user) {
-        const resCook = await customFetch({
-          isPy: false,
-          url: "/api/user-cookies/post",
-          method: 'post',
-          body: JSON.stringify({ email: parsed.data.data_user.email, token: isLogin ? parsed.data.data_user.tk : undefined })
-        })
-        if (!resCook) {
-          router.push("/");
-          return parsed.success;
-        };
-        router.push(`${parsed.data.id}/dashboard`)
-        return true;
-      }
+      if (parsed.data.data_user !== null) {
+          const resCook = await customFetch({
+            isPy: false,
+            url: "/user-cookies/post",
+            method: 'post',
+            body: JSON.stringify({ email: parsed.data.data_user.email, tk: parsed.data.data_user.tk })
+          })
+          console.log("La forma della res è: ", resCook);
+          if (!resCook) {
+            router.push("/");
+            return parsed.success;
+          };
+          router.push(`${parsed.data.id}/dashboard`)
+          return true;
+        }
+      
       if (parsed.status === 409) {
         console.log("utente già presente nel database: ", parsed.success);
         setConflict({
-          state: true,
+          state: parsed.success,
+          message: parsed.message,
+        });
+        return parsed.data;
+      }
+      if (parsed.status === 404) {
+        console.log("Qualcosa è andato storto o non è stata trovata ", parsed.message);
+        setConflict({
+          state: parsed.success,
           message: parsed.message,
         });
         return parsed.data;
@@ -161,7 +170,7 @@ export default function HomeComponent() {
   }, [isLogin]);
 
   return (
-    <div className="flex flex-col w-full h-full items-center justify-center font-sans bg-black p-5">
+    <div className="flex flex-col flex-1 items-center justify-center font-sans bg-black p-5">
       {
         isLoading ? (
           <div className="relative flex flex-1 bg-white">
@@ -170,19 +179,22 @@ export default function HomeComponent() {
         ) : (
           <>
             <div className="relative flex w-full h-12">
-              Accedi alle funzionalità inviando alcuni dati essenziali a farti riconoscere
+              <p className="text-white">Accedi alle funzionalità inviando alcuni dati essenziali a farti riconoscere</p>
             </div>
             <hr className="text-amber-200 w-full h-0.5" />
-            <p>Seleziona se sei registrato o no</p>
+            <p className="text-white">Seleziona se sei registrato o no</p>
             <button type="button" className="relative flex items-center justify-center border-2 border-amber-100 h-10 w-1/2 rounded-2xl min-w-28 cursor-pointer" onClick={handleIsLogin}>
-              {isLogin === "n" ? "Non sono registrato" : "Sì, sono registrato"}
+              <p className="text-white">
+                {isLogin === "n" ? "Non sono registrato" : "Sì, sono registrato"}
+              </p>
             </button>
-            <div className="relative flex w-full justify-center bg-black border border-red-500 text-white font-medium text-base">
+            <div className="relative flex flex-col w-full justify-center bg-black border border-red-500 text-white font-medium text-base">
               {
                 isLogin === 'y' ?
                   (<FormYesSignUp control={controlLogin} conflict={conflict} isLogin={isLogin} handleSubmit={handleSubLogin(handleSubmitFormY)} />) :
                   (<FormNoSignUp control={control} conflict={conflict} isLogin={isLogin} handleSubmit={handleSubmit(handleSubmitFormN)} />)
               }
+              <span className="text-white h-auto w-full">{conflict.message}</span>
             </div>
           </>
         )
