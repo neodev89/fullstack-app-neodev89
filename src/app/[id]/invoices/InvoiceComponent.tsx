@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { tokenProps } from "@/src/interfaces/tokenProps";
 import { customFetch } from "@/src/lib/fetch/customFetch";
 import { responseApiObj, ResponseApiProps } from "@/src/responseAPI/responseApi";
-import { ResponseApiSchemaDBType } from "@/src/zod/formSchema";
+import { ResponseAPIResCookiesSchema, ResponseApiSchemaDBType } from "@/src/zod/formSchema";
 import { invoiceType } from "@/src/zod/invoiceSchema";
 import { usePathname } from "next/navigation";
 import InvoiceModal from "./invoiceModal";
@@ -32,12 +32,13 @@ export default function InvoiceComponent() {
                 url: "/user-cookies/get",
                 method: "get",
                 headers: {
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
                 },
             });
             console.log("i dati ottenuti sono a forma di ResponseAPI: ", responseData);
-            const res: ResponseApiProps<tokenProps> = await responseData;
-            return res;
+            const parsed = await ResponseAPIResCookiesSchema.parseAsync(responseData);
+            if (!parsed) return null;
+            return parsed
         } catch (error: Error | unknown) {
             const msg = error instanceof Error ? error.message : JSON.stringify(error);
             return msg;
@@ -50,7 +51,7 @@ export default function InvoiceComponent() {
 
         try {
             const token = await fullData();
-            if (typeof token === "string") {
+            if (!token) {
                 return responseApiObj<null>({
                     success: false,
                     message: "Il token non è presente nei dati ottenuti",
@@ -58,8 +59,8 @@ export default function InvoiceComponent() {
                     status: 404,
                 });
             }
+            if (typeof token === "string") return undefined;
 
-            console.log("Vediamo il tipo della mail: ", token.data.email);
             const email = encodeURIComponent(token.data.email);
             const pathUrl = `api/get-user/${email}`;
 
@@ -148,7 +149,7 @@ export default function InvoiceComponent() {
             try {
                 // TypeScript riconosce la firma ed è felice
                 const result = await getData({ signal: controller.signal });
-
+                if (!result) return null;
                 // L'inferenza sul discriminated union funziona nativamente
                 if (result.success && result.data) {
                     setInvoices(result.data); // result.data qui è Invoice[]
