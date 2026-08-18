@@ -1,25 +1,24 @@
 'use server'
 
 import DashboardComponent from "./dashboard";
-import { ResponseApiProps } from "@/src/responseAPI/responseApi";
-import { formType, ResponseAPISchema, formSchema } from "@/src/zod/formSchema";
+import { customFetch } from "@/src/lib/fetch/customFetch";
+import { ResponseAPISchemaDB, type DatabaseType, DatabaseSchema, ResponseAPIResCookiesSchema, responseCookiesDecodedSchema } from "@/src/zod/formSchema";
 import { cookies } from "next/headers";
 
 export default async function Dashboard() {
-    const getUser = async (email: string): Promise<formType | null> => {
+    const getUser = async (email: string): Promise<DatabaseType | null> => {
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/get-user/${email}`, {
+            const res = await customFetch({
+                isPy: true,
+                urlPy: `api/get-user/${email}`,
                 method: 'get',
-                headers: {
-                    "Content-Type": "application/json",
-                },
                 cache: "reload",
-            })
-            const awaitData = await res.json();
-            const parsed = await ResponseAPISchema.parseAsync(awaitData);
+            });
+            const parsed = await ResponseAPISchemaDB.parseAsync(res);
             if (!parsed) return null;
-            const user = await formSchema.parseAsync(parsed.data.data_user)
+            const user = await DatabaseSchema.parseAsync(parsed.data.data_user)
             if (!user) return null;
+            console.log("L'utente viene recuperato?: ", user);
             return user;
         } catch (error: Error | unknown) {
             console.log(error instanceof Error ? error.message : error);
@@ -29,35 +28,38 @@ export default async function Dashboard() {
 
     const userEmail = async () => {
         try {
+        const firmSetCookies = process.env.KEY_COOKIES_SET;
+            if (!firmSetCookies) return;
             const cookieStore = await cookies(); // Leggi i cookie del client
-
-            const res = await fetch("http://localhost:3000/api/user-cookies/get", {
-                method: 'GET',
+            const token = cookieStore.get(firmSetCookies);
+            if (!token) return;
+            const res = await customFetch({
+                isPy: false,
+                url: "user-cookies/get",
+                method: 'get',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Cookie': cookieStore.toString(), // <-- FONDAMENTALE: Inoltra i cookie al Route Handler
+                    'Cookie': `${token.name}=${token.value}`, // <-- Formattazione Cookie corretta
                 },
-                cache: 'no-store' // Evita che Next.js salvi in cache la risposta per utenti diversi
+                cache: 'no-store'
             });
 
-            if (!res.ok) return undefined;
-            const response = await res.json();
-            const parsed = response as ResponseApiProps<{ email: string, token: string, iat: number, exp: number }>;
+            if (!res) return undefined;
 
-            return parsed.data; // <-- FONDAMENTALE: ricordati il return dell'email!
+            return res;
         } catch (error) {
             console.log("Errore nella GET: ", error instanceof Error ? error.message : error);
             return undefined;
         }
     }
     const userData = await userEmail();
-    console.log("I dati del cookie sono presenti? ", userData ? userData : "Nessun dato disponibile");
+    console.log("I dati del cookie sono presenti? ", userData);
     let userDashboard;
-    if (userData && userData.email) {
-        console.log("Viene mostrata la email? ", userData.email);
-        userDashboard = await getUser(userData.email);
+    if (userData) {
+        const parsed = await ResponseAPIResCookiesSchema.parseAsync(userData);
+        if (!parsed) return null;
+        userDashboard = await getUser(parsed.data.email);
     }
-    console.log("Nessuna email presente")
 
     return (
         <div className="relative flex flex-1 justify-center items-center bg-black">

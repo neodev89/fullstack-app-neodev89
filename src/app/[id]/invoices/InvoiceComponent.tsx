@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { tokenProps } from "@/src/interfaces/tokenProps";
 import { customFetch } from "@/src/lib/fetch/customFetch";
 import { responseApiObj, ResponseApiProps } from "@/src/responseAPI/responseApi";
-import { ResponseUserAPIType } from "@/src/zod/formSchema";
+import { ResponseApiSchemaDBType } from "@/src/zod/formSchema";
 import { invoiceType } from "@/src/zod/invoiceSchema";
 import { usePathname } from "next/navigation";
 import InvoiceModal from "./invoiceModal";
@@ -29,8 +29,8 @@ export default function InvoiceComponent() {
         try {
             const responseData = await customFetch({
                 isPy: false,
-                method: "get",
                 url: "/user-cookies/get",
+                method: "get",
                 headers: {
                     "Content-Type": "application/json"
                 },
@@ -61,7 +61,7 @@ export default function InvoiceComponent() {
 
             console.log("Vediamo il tipo della mail: ", token.data.email);
             const email = encodeURIComponent(token.data.email);
-            const pathUrl = `http://127.0.0.1:8000/api/get-user/${email}`;
+            const pathUrl = `api/get-user/${email}`;
 
             // Prima chiamata con signal
             const res = await customFetch({
@@ -75,7 +75,7 @@ export default function InvoiceComponent() {
                 signal,
             });
 
-            const response: ResponseApiProps<ResponseUserAPIType> = res;
+            const response: ResponseApiSchemaDBType = res;
 
             if (response.status !== 200) {
                 return responseApiObj<null>({
@@ -103,7 +103,7 @@ export default function InvoiceComponent() {
             // Seconda chiamata: AGGIUNTO signal QUI
             const resInvoice = await customFetch({
                 isPy: true,
-                urlPy: `http://127.0.0.1:8000/api/get-invoice-user/${tkUser}`,
+                urlPy: `api/get-invoice-user/${tkUser}`,
                 method: 'get',
                 cache: 'reload',
                 signal, // <- FONDAMENTALE!

@@ -27,7 +27,7 @@ export async function GET() {
             }), { status: 404 }
         );
 
-        const rawToken = cookieStore.get(firmSetCookies)?.value;
+        const rawToken = cookieStore.get(firmSetCookies);
         if (!rawToken) {
             return Response.json(
                 responseApiObj<undefined>({
@@ -39,7 +39,7 @@ export async function GET() {
             );
         }
 
-        const decoded = jwt.verify(rawToken, firmToken);
+        const decoded = jwt.verify(rawToken.value, firmToken);
          if (!decoded) return Response.json(
             responseApiObj<undefined>({
                 success: false,

@@ -11,12 +11,12 @@ interface customFetchProps {
     signal?: AbortSignal;
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
 
 export const customFetch = async ({ method, isPy, urlPy, url, headers, params, body, cache }: customFetchProps) => {
     try {
         const awaitData = await fetch(
-            isPy ? `${urlPy}` : `${baseUrl}/api/${url}`,
+            isPy ? `http://localhost:8000/${urlPy}` : `http://localhost:3000/api/${url}`,
             {
                 method,
                 headers: {
@@ -28,7 +28,14 @@ export const customFetch = async ({ method, isPy, urlPy, url, headers, params, b
                 cache,
             }
         );
-        if (!awaitData.ok) return null;
+        if (!awaitData.ok) {
+            // console.log("La chiamata API fallisce per un errore. Controllare: ", {
+            //     url: isPy ? `http://localhost:8000/${urlPy}` : `http://localhost:3000/api/${url}`,
+            //     method,
+            //     body,
+            // });
+            return null;
+        };
 
         const res = await awaitData.json();
         return res;

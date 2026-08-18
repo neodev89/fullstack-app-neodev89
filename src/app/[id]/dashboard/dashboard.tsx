@@ -2,23 +2,24 @@
 
 import Link from "next/link";
 import FormComponent from "@/src/ui/form/form";
-import { formSchema, formType, ResponseAPISchema } from "@/src/zod/formSchema";
+import { formSchema, type formType, type DatabaseType, ResponseAPISchemaDB } from "@/src/zod/formSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { customFetch } from "@/src/lib/fetch/customFetch";
 
 export default function DashboardComponent({
     user,
 }: {
-    user: formType | null;
+    user: DatabaseType | null;
 }) {
     const router = useRouter();
     const path = usePathname();
 
     const newPath = path.replace("dashboard", "invoices");
 
-    const initialState: formType = {
+    const initialState: DatabaseType = {
         name: "Mario",
         lastName: "Rossi",
         address: {
@@ -34,24 +35,23 @@ export default function DashboardComponent({
         tk: "",
     };
 
-    const { control, handleSubmit, setValue, reset } = useForm<formType>({
+    const { control, handleSubmit, setValue, setValues, reset } = useForm<formType>({
         defaultValues: initialState,
         resolver: zodResolver(formSchema),
     });
 
     const handleSubmitForm = async (data: formType) => {
         try {
-            const response = await fetch("http://127.0.0.1:8000/api/change-user", {
+            const response = await customFetch({
+                isPy: true,
+                urlPy: "api/change-user",
                 method: "put",
-                headers: {
-                    "Content-Type": "application/json"
-                },
                 body: JSON.stringify(data),
                 cache: "reload"
             });
             if (response.status === 200) {
                 const res = await response.json();
-                const parsed = await ResponseAPISchema.parseAsync(res);
+                const parsed = await ResponseAPISchemaDB.parseAsync(res);
                 if (!parsed) {
                     console.log("La forma della response non è adatta allo schema Zod");
                     return;
@@ -72,9 +72,11 @@ export default function DashboardComponent({
 
     const handleDelete = async (email: formType["email"]) => {
         try {
-            const url = new URL("http://127.0.0.1:8000/api/delete-user");
+            const url = new URL("api/delete-user");
             url.searchParams.set("email", encodeURIComponent(email));
-            const response = await fetch(url.toString(), {
+            const response = await customFetch({
+                isPy: true,
+                urlPy: url.toString(),
                 method: "delete",
                 headers: {
                     "Content-Type": "application/json"
@@ -102,28 +104,20 @@ export default function DashboardComponent({
 
     async function handleExit() {
         try {   
-            const res = await fetch("http://localhost:3000/api/user-cookies/delete", {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+            const res = await customFetch({
+                isPy: false,
+                url: "user-cookies/delete",
+                method: 'delete',
                 cache: 'no-store' // Evita che Next.js salvi in cache la risposta per utenti diversi
             });
-            const awaitRes = await res.json();
-            if (!awaitRes) return;
+            console.log(res);
+            if (!res) return;
             router.push("/");
         } catch (error: Error | unknown) {
             console.log(error instanceof Error ? error.message : error);
             return null;
         }
     }
-
-    const utente = useWatch({
-        control,
-    });
-    useEffect(() => {
-        console.log("Utente loggato: ", utente);
-    }, [user, utente]);
 
     return (
         <div className="relative flex flex-1 flex-col bg-black">

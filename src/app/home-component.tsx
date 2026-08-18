@@ -1,6 +1,6 @@
 'use client'
 import { Controller, useForm } from "react-hook-form";
-import { formSchema, formType, loginSchema, loginType, ResponseAPISchema } from "../zod/formSchema";
+import { formSchema, formType, loginSchema, loginType, ResponseAPISchemaUser, ResponseAPISchemaDB, ResCookiesSchema } from "../zod/formSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -16,7 +16,7 @@ export default function HomeComponent() {
   });
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const initialState: Omit<formType, "tk"> = {
+  const initialState: formType = {
     name: "",
     lastName: "",
     address: {
@@ -45,10 +45,10 @@ export default function HomeComponent() {
     resolver: zodResolver(loginSchema),
   });
 
-  const handleSubmitFormN = async (data: Omit<formType, "tk">) => {
+  const handleSubmitFormN = async (data: formType) => {
     try {
       console.log("HandleSubmitForm chiamata")
-      const path = "http://127.0.0.1:8000/api/save-user";
+      const path = "api/save-user";
       const response = await customFetch({
         isPy: true,
         urlPy: `${path}`,
@@ -56,32 +56,34 @@ export default function HomeComponent() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(data),
+        body: data,
       });
-      const parsed = await ResponseAPISchema.parseAsync(response);
-      if (!parsed) {
+      const parsed = await ResponseAPISchemaDB.parseAsync(response);
+      if (!parsed.data) {
         console.log("La forma della response non è adatta allo schema Zod");
         return parsed;
       }
-      console.log("Ecco la response: ", parsed);
-      console.log("I dati di parsed sono: ", parsed.data.data_user);
+      console.log("I dati passati al cookie saranno: ", {
+        email: parsed.data.data_user?.email,
+        token: parsed.data.data_user?.tk,
+      });
+      if (parsed.data !== null && parsed.data.data_user !== null) {
 
-      if (parsed.data.data_user !== null) {
-          const resCook = await customFetch({
-            isPy: false,
-            url: "/user-cookies/post",
-            method: 'post',
-            body: JSON.stringify({ email: parsed.data.data_user.email, tk: parsed.data.data_user.tk })
-          })
-          console.log("La forma della res è: ", resCook);
-          if (!resCook) {
-            router.push("/");
-            return parsed.success;
-          };
-          router.push(`${parsed.data.id}/dashboard`)
-          return true;
-        }
-      
+        const resCook = await customFetch({
+          isPy: false,
+          url: "user-cookies/post",
+          method: 'post',
+          body: JSON.stringify({ email: parsed.data.data_user.email, tk: parsed.data.data_user.tk })
+        })
+        console.log("La forma della res è: ", resCook);
+        if (!resCook) {
+          router.push("/");
+          return parsed.success;
+        };
+        router.push(`${parsed.data.id}/dashboard`)
+        return true;
+      }
+
       if (parsed.status === 409) {
         console.log("utente già presente nel database: ", parsed.success);
         setConflict({
@@ -108,8 +110,7 @@ export default function HomeComponent() {
   const handleSubmitFormY = async (data: loginType) => {
     try {
       console.log("HandleSubmitForm chiamata")
-      const path = "http://127.0.0.1:8000/api/login-user";
-      console.log("Quale path API sto chiamando?: ", path);
+      const path = "api/login-user";
       const response = await customFetch({
         isPy: true,
         urlPy: `${path}`,
@@ -120,25 +121,31 @@ export default function HomeComponent() {
         body: JSON.stringify({ email: data.email, pw: data.pw }),
       });
       console.log("La response del login è: ", response);
-      const parsed = await ResponseAPISchema.parseAsync(response);
-      if (!parsed) {
+      const parsed = await ResponseAPISchemaDB.parseAsync(response);
+      if (!parsed.data) {
         console.log("La forma della response non è adatta allo schema Zod");
         return parsed;
       }
       console.log("Ecco la response: ", parsed);
 
-      if (parsed.status === 200 && parsed.data.data_user) {
+      if (parsed.status === 200 && parsed.data && parsed.data.data_user) {
         setIsLoading(true);
         const resCook = await customFetch({
           isPy: false,
-          url: "/user-cookies/post",
-          method: 'post',
-          body: JSON.stringify({ email: parsed.data.data_user.email, token: isLogin ? parsed.data.data_user.tk : undefined })
-        })
-        if (!resCook) {
+          url: "user-cookies/post",
+          method: "post",
+          body: JSON.stringify({ email: parsed.data.data_user.email, token: parsed.data.data_user.tk }),
+          cache: "force-cache",
+        });
+        if (!resCook) return;
+        const parsedResCook = ResCookiesSchema.parse(resCook);
+        if (!parsedResCook.success) {
+          console.log("Il salvataggio del cookie non è andato a buon fine: ", resCook);
           router.push("/");
+          setIsLoading(false);
           return parsed.success;
         };
+        console.log("Il salvataggio del cookie è andato a buon fine: ", parsedResCook.data);
         router.push(`${parsed.data.id}/dashboard`)
         return true;
       }
